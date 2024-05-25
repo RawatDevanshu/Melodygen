@@ -1,9 +1,14 @@
+import json
 import os
 
 import music21 as m21
 
 KERN_DATASET_PATH = "./deutschl/test/"
 SAVE_DIR = "./dataset"
+SINGLE_FILE_DATASET = "file_dataset"
+MAPPING_PATH = "mapping.json"
+SEQUENCE_LENGTH = 64
+
 ACCEPTABLE_DURATIONS = [0.25, 0.5, 0.75, 1.0, 1.5, 2, 3, 4]
 
 
@@ -35,7 +40,6 @@ def transpose(song):
     # estimate key using music21
     if not isinstance(key, m21.key.Key):
         key = song.analyze("key")
-    print(key)
 
     # get interval for transposition. i.e. Bmaj -> Cmaj
     if key.mode == "major":
@@ -104,11 +108,52 @@ def preprocess(dataset_path):
             fp.write(encoded_song)
 
 
-if __name__ == "__main__":
-    songs = load_songs_in_kern(KERN_DATASET_PATH)
-    print(f"Loaded {len(songs)} songs.")
-    song = songs[0]
+def load(file_path):
+    with open(file_path, "r") as fp:
+        song = fp.read()
+    return song
 
+
+def create_single_file_dataset(dataset_path, file_dataset_path, sequence_length):
+    new_song_delimiter = "/ " * sequence_length
+    songs = ""
+    # load encoded songs and add delimiters
+    for path, _, files in os.walk(dataset_path):
+        for file in files:
+            file_path = os.path.join(path, file)
+            song = load(file_path)
+            songs = songs + song + " " + new_song_delimiter
+
+    songs = songs[:-1]
+
+    # save string that contains all dataset
+    with open(file_dataset_path, "w") as fp:
+        fp.write(songs)
+
+    return songs
+
+
+def create_mapping(songs, mapping_path):
+    mappings = {}
+
+    # identify the vocabulary
+    songs = songs.split()
+    vocabulary = list(set(songs))
+
+    # create mapping
+    for i, symbol in enumerate(vocabulary):
+        mappings[symbol] = i
+
+    # save vocabulary to a json file
+    with open(mapping_path, "w") as fp:
+        json.dump(mappings, fp, indent=4)
+
+
+def main():
     preprocess(KERN_DATASET_PATH)
-    transposed_song = transpose(song)
-    transposed_song.show()
+    songs = create_single_file_dataset(SAVE_DIR, SINGLE_FILE_DATASET, SEQUENCE_LENGTH)
+    create_mapping(songs, MAPPING_PATH)
+
+
+if __name__ == "__main__":
+    main()
