@@ -1,1 +1,5 @@
+__pycache__/
+dataset/
+file_dataset
+mapping.json
 venv/
